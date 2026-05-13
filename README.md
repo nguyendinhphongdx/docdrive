@@ -7,7 +7,7 @@ A drive-like Markdown / HTML workspace with shareable, expiring links.
 - **Editor**: CodeMirror on the left, live preview on the right (drag to resize, tabs on mobile).
 - **TTL**: 1 hour, 1 day, 7 days, 30 days, or never. Expired documents are swept hourly by a cron.
 - **Anonymous + accounts**: Create without signing in (edit-token stored locally), or sign up to manage everything from `/dashboard`.
-- **Safe HTML**: All HTML output is run through DOMPurify with a strict allow-list. Markdown is sanitized too.
+- **Safe HTML**: All HTML output is run through `sanitize-html` with a strict allow-list. Markdown is sanitized too.
 
 Built on top of [nextjs-boilerplate](https://github.com/nguyendinhphongdx/nextjs-boilerplate) — Next.js 16 (App Router) + React 19 + Tailwind 4 + shadcn/ui + TanStack Query + Zustand + Auth.js v5 + Prisma + Postgres.
 
@@ -129,7 +129,7 @@ Document  { id, slug, title?, contentType, content, folderId?, ownerId?, editTok
 
 ## Security notes
 
-- HTML content is sanitized with `isomorphic-dompurify` (strict allow-list: no `<script>`, `<iframe>`, event handlers, etc.).
+- HTML content is sanitized with `sanitize-html` (strict allow-list: no `<script>`, `<iframe>`, event handlers, etc.).
 - Markdown is rendered with `react-markdown` + `rehype-sanitize`.
 - Edit-token comparison is constant-time.
 - Passwords hashed with `bcryptjs` (10 rounds).

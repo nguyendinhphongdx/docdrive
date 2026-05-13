@@ -85,7 +85,7 @@ export const FEATURES: Feature[] = [
     icon: ShieldCheck,
     title: "Safe HTML",
     description:
-      "HTML mode passes through DOMPurify and a strict allow-list. Markdown is sanitized too.",
+      "HTML mode passes through sanitize-html and a strict allow-list. Markdown is sanitized too.",
   },
 ];
 
