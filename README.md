@@ -125,7 +125,7 @@ Document  { id, slug, title?, contentType, content, folderId?, ownerId?, editTok
 | View document | `/d/<slug>` is a server component. It checks `expiresAt`, increments `viewCount` (fire-and-forget), and renders the content. Header shows parent folder if any. |
 | View folder | `/f/<slug>` lists subfolders + non-expired documents, with breadcrumbs walked up the `parentId` chain (server-side). Logged-in owners (or token holders) see Rename/Delete controls. |
 | Edit | `/editor/<slug>` loads the document server-side. Client resolves `editToken` from `?token=` or localStorage and sends it as `x-edit-token` on `PATCH`. Owners may edit without a token. |
-| Expire | `expiresAt <= now()` → GET returns 410. Hourly Vercel cron at `POST /api/cron/cleanup` (header `x-cron-secret: $CRON_SECRET`) deletes expired rows. |
+| Expire | `expiresAt <= now()` → GET returns 410. An external cron should call `POST /api/cron/cleanup` (header `x-cron-secret: $CRON_SECRET`) on a schedule of your choice to delete expired rows. |
 
 ## Security notes
 
@@ -138,4 +138,35 @@ Document  { id, slug, title?, contentType, content, folderId?, ownerId?, editTok
 
 ## Deploying
 
-The app is Vercel-friendly: configure `DATABASE_URL`, `AUTH_SECRET`, `CRON_SECRET` (and optionally `NEXT_PUBLIC_SITE_URL`), then deploy. `vercel.json` registers the hourly cleanup cron — Vercel injects the secret automatically when the cron path is hit.
+Configure the same envs (`DATABASE_URL`, `AUTH_SECRET`, `CRON_SECRET`, optionally `NEXT_PUBLIC_SITE_URL`) on your host of choice. App Router + Prisma + bcryptjs all run on a standard Node.js runtime — no edge-specific code.
+
+## Scheduled cleanup (external cron)
+
+Expired documents stay in the DB until `POST /api/cron/cleanup` is called. Wire any external scheduler that can hit an HTTPS endpoint with a custom header. Examples:
+
+**Linux crontab + curl** (every hour):
+
+```cron
+0 * * * * curl -fsSL -X POST -H "x-cron-secret: $CRON_SECRET" https://your-domain/api/cron/cleanup >/dev/null
+```
+
+**GitHub Actions** (`.github/workflows/cleanup.yml`):
+
+```yaml
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          curl -fsSL -X POST \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            https://your-domain/api/cron/cleanup
+```
+
+**Hosted services** like cron-job.org, EasyCron, Upstash QStash, or Cloudflare Cron Triggers all work the same way — set a POST request to the URL with the header.
+
+Either header works: `x-cron-secret: <value>` or `Authorization: Bearer <value>`.
