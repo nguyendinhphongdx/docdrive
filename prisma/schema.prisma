@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum ContentType {
+  MARKDOWN
+  HTML
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  documents Document[]
+  folders   Folder[]
+}
+
+model Folder {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  name        String
+  description String?
+  parentId    String?
+  parent      Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Folder[] @relation("FolderTree")
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  editToken   String
+  documents   Document[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([ownerId])
+  @@index([parentId])
+}
+
+model Document {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String?
+  contentType ContentType @default(MARKDOWN)
+  content     String      @db.Text
+  ownerId     String?
+  owner       User?       @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  folderId    String?
+  folder      Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  editToken   String
+  expiresAt   DateTime?
+  viewCount   Int         @default(0)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([ownerId])
+  @@index([folderId])
+  @@index([expiresAt])
+}
