@@ -1,6 +1,5 @@
 import { EditorView } from "@/features/document";
 import { createMetadata } from "@/lib/seo";
-import { EditorTopBar } from "./EditorTopBar";
 import { EditorCreateClient } from "./EditorCreateClient";
 import { FolderPickerSlot } from "./FolderPickerSlot";
 
@@ -17,11 +16,8 @@ interface PageProps {
 export default async function EditorPage({ searchParams }: PageProps) {
   const { folderId } = await searchParams;
   return (
-    <div className="flex h-screen flex-col">
-      <EditorTopBar />
-      <EditorCreateClient initialFolderId={folderId ?? null}>
-        <EditorView folderPicker={<FolderPickerSlot />} />
-      </EditorCreateClient>
-    </div>
+    <EditorCreateClient initialFolderId={folderId ?? null}>
+      <EditorView folderPicker={<FolderPickerSlot />} />
+    </EditorCreateClient>
   );
 }

@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { createMetadata } from "@/lib/seo";
 import { ExpiredView } from "../../d/[slug]/expired/ExpiredView";
-import { EditorTopBar } from "../EditorTopBar";
 import { EditorEditClient } from "./EditorEditClient";
 
 export const dynamic = "force-dynamic";
@@ -39,15 +38,12 @@ export default async function EditDocumentPage({ params }: PageProps) {
   }
 
   return (
-    <div className="flex h-screen flex-col">
-      <EditorTopBar />
-      <EditorEditClient
-        slug={doc.slug}
-        title={doc.title}
-        contentType={doc.contentType}
-        content={doc.content}
-        folderId={doc.folderId}
-      />
-    </div>
+    <EditorEditClient
+      slug={doc.slug}
+      title={doc.title}
+      contentType={doc.contentType}
+      content={doc.content}
+      folderId={doc.folderId}
+    />
   );
 }
