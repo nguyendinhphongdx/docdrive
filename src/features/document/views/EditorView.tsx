@@ -137,8 +137,7 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
             createdAt: new Date().toISOString(),
           });
           setSavedDoc(data);
-          setShareDialogOpen(true);
-          toast.success("Document created");
+          toast.success("Saved");
           router.replace(`/editor/${data.slug}?token=${data.editToken}`);
         },
         onError: (err) =>
