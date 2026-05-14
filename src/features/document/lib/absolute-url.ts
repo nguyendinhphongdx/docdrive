@@ -10,9 +10,9 @@ export async function getOrigin(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-export function buildShareUrls(origin: string, slug: string, editToken: string) {
+export function buildDocumentUrls(origin: string, slug: string, editToken: string) {
   return {
-    viewUrl: `${origin}/s/${slug}`,
+    viewUrl: `${origin}/d/${slug}`,
     editUrl: `${origin}/editor/${slug}?token=${editToken}`,
   };
 }

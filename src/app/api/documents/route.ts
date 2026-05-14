@@ -6,7 +6,7 @@ import { createDocumentSchema } from "@/features/document/lib/schema";
 import { generateSlug } from "@/features/document/lib/slug";
 import { computeExpiresAt } from "@/features/document/lib/ttl";
 import {
-  buildShareUrls,
+  buildDocumentUrls,
   getOrigin,
 } from "@/features/document/lib/absolute-url";
 
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest) {
   });
 
   const origin = await getOrigin();
-  const urls = buildShareUrls(origin, created.slug, editToken);
+  const urls = buildDocumentUrls(origin, created.slug, editToken);
 
   return NextResponse.json(
     {
