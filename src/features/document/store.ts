@@ -33,8 +33,27 @@ Type **Markdown** here. Live preview on the right.
 - Drop the document into a folder (optional).
 - Click **Create document** when you're done.
 
+## Code
+
 \`\`\`js
 console.log("share me!");
+\`\`\`
+
+## Math
+
+Inline: $E = mc^2$, and a block:
+
+$$
+\\int_0^1 x^2\\,dx = \\frac{1}{3}
+$$
+
+## Mermaid
+
+\`\`\`mermaid
+flowchart LR
+  Editor -->|create| API
+  API --> DB[(Postgres)]
+  API -->|share link| Viewer
 \`\`\`
 `;
 
