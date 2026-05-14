@@ -1,8 +1,6 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeSanitize from "rehype-sanitize";
+import { Streamdown } from "streamdown";
 
 interface MarkdownProps {
   source: string;
@@ -11,17 +9,7 @@ interface MarkdownProps {
 export function Markdown({ source }: MarkdownProps) {
   return (
     <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word">
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
-        components={{
-          a: (props) => (
-            <a {...props} target="_blank" rel="noopener noreferrer" />
-          ),
-        }}
-      >
-        {source}
-      </ReactMarkdown>
+      <Streamdown>{source}</Streamdown>
     </div>
   );
 }
