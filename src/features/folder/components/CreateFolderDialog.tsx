@@ -23,14 +23,24 @@ interface CreateFolderDialogProps {
   parentId?: string | null;
   trigger?: React.ReactNode;
   onCreated?: (folder: { id: string; slug: string; name: string }) => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function CreateFolderDialog({
   parentId = null,
   trigger,
   onCreated,
+  open: controlledOpen,
+  onOpenChange,
 }: CreateFolderDialogProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+  const setOpen = (next: boolean) => {
+    if (isControlled) onOpenChange?.(next);
+    else setInternalOpen(next);
+  };
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const create = useCreateFolder();
@@ -70,14 +80,16 @@ export function CreateFolderDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button variant="outline" size="sm">
-            <FolderPlus className="mr-1 h-4 w-4" />
-            New folder
-          </Button>
-        )}
-      </DialogTrigger>
+      {!isControlled && (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button variant="outline" size="sm">
+              <FolderPlus className="mr-1 h-4 w-4" />
+              New folder
+            </Button>
+          )}
+        </DialogTrigger>
+      )}
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit} className="space-y-4">
           <DialogHeader>

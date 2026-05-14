@@ -1,10 +1,24 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  CreateFolderDialog,
+  FolderTree,
+  type SelectedFolder,
+} from "@/features/folder";
 import { DocumentsTable } from "../components/DocumentsTable";
-import { CreateFolderDialog, FolderTree } from "@/features/folder";
 
 export function DashboardView() {
+  const [selected, setSelected] = useState<SelectedFolder | null>(null);
+
+  const targetFolderId = selected?.id ?? null;
+  const editorHref = targetFolderId
+    ? `/editor?folderId=${targetFolderId}`
+    : "/editor";
+
   return (
     <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
       <div className="mb-6 flex items-center justify-between">
@@ -15,9 +29,9 @@ export function DashboardView() {
           </p>
         </div>
         <div className="flex gap-2">
-          <CreateFolderDialog />
+          <CreateFolderDialog parentId={targetFolderId} />
           <Button asChild>
-            <Link href="/editor">
+            <Link href={editorHref}>
               <Plus className="mr-1 h-4 w-4" />
               New document
             </Link>
@@ -30,14 +44,16 @@ export function DashboardView() {
           <h2 className="px-2 pb-2 pt-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Folders
           </h2>
-          <FolderTree />
+          <FolderTree selectedId={targetFolderId} onSelect={setSelected} />
         </aside>
 
         <section className="rounded-lg border">
           <header className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Documents in My drive (root)
+            {selected
+              ? `Documents in ${selected.name}`
+              : "Documents in My drive (root)"}
           </header>
-          <DocumentsTable folderId={null} />
+          <DocumentsTable folderId={targetFolderId} />
         </section>
       </div>
     </main>

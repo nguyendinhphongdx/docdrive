@@ -29,6 +29,7 @@ export type {
 } from "./types";
 export { FolderPicker } from "./components/FolderPicker";
 export { FolderTree } from "./components/FolderTree";
+export type { SelectedFolder } from "./components/FolderTree";
 export { CreateFolderDialog } from "./components/CreateFolderDialog";
 export { FolderView } from "./views/FolderView";
 export { FolderViewActions } from "./views/FolderViewActions";
