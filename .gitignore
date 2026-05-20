@@ -44,3 +44,4 @@ next-env.d.ts
 # Claude Code (per-user; team config is .claude/settings.json — that one IS committed)
 .claude/settings.local.json
 .claude/.session/
+.claude/*.lock
