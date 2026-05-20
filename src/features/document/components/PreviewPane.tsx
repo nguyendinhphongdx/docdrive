@@ -17,7 +17,7 @@ export function PreviewPane({ content, contentType }: PreviewPaneProps) {
   );
 
   return (
-    <div className="h-full overflow-auto bg-background px-6 py-4">
+    <div className="h-full overflow-auto scroll-smooth bg-background px-6 py-4">
       {contentType === "HTML" ? (
         <div
           className="prose prose-sm dark:prose-invert max-w-none wrap-break-word"
