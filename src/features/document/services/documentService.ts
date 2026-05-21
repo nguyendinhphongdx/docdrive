@@ -6,6 +6,7 @@ import type {
   CreateDocumentResponse,
   ContentType,
   DocumentDto,
+  Visibility,
 } from "../types";
 
 async function handle<T>(res: Response): Promise<T> {
@@ -31,6 +32,8 @@ export interface DocumentSummary {
   title: string | null;
   contentType: ContentType;
   folderId: string | null;
+  visibility: Visibility;
+  shareToken: string | null;
   expiresAt: string | null;
   viewCount: number;
   createdAt: string;

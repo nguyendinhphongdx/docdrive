@@ -155,16 +155,22 @@ function DocumentRow({ doc, isPending, onPendingChange }: RowProps) {
           <DropdownMenuContent align="end">
             <DropdownMenuItem asChild>
               <Link href={`/d/${doc.slug}`}>
-                <Eye className="mr-2 h-4 w-4" />
-                View
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href={`/editor/${doc.slug}`}>
                 <Pencil className="mr-2 h-4 w-4" />
-                Edit
+                Open
               </Link>
             </DropdownMenuItem>
+            {doc.shareToken && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`/sd/${doc.shareToken}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  Open share link
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem
               variant="destructive"
               onSelect={(e) => {

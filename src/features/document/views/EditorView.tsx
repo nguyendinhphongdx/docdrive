@@ -124,15 +124,28 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
       { title: title || undefined, contentType, content, ttl, folderId },
       {
         onSuccess: (data) => {
-          rememberOwnedDocument({
-            slug: data.slug,
-            editToken: data.editToken,
-            title: title || null,
-            createdAt: new Date().toISOString(),
-          });
+          // Only track for anonymous creators — authed users own the row in DB.
+          if (!authed) {
+            rememberOwnedDocument({
+              slug: data.slug,
+              editToken: data.editToken,
+              title: title || null,
+              createdAt: new Date().toISOString(),
+            });
+          }
           setSavedDoc(data);
-          toast.success("Saved");
-          router.replace(`/editor/${data.slug}?token=${data.editToken}`);
+          // For anonymous, show the dialog automatically (it carries the ONLY
+          // edit URL the user gets). Authed user can click Share later.
+          if (!authed) {
+            setShareDialogOpen(true);
+          } else {
+            toast.success("Saved");
+          }
+          // Anonymous: token in URL so refresh keeps editing rights.
+          // Authed: clean URL, server uses session.
+          router.replace(
+            authed ? `/d/${data.slug}` : `/d/${data.slug}?token=${data.editToken}`,
+          );
         },
         onError: (err) =>
           toast.error(err instanceof Error ? err.message : "Failed to create document"),

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { ChevronRight, FileText, Folder as FolderIcon, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { formatRemaining } from "@/features/document";
+import { formatRemaining, type Visibility } from "@/features/document";
 import { FolderViewActions } from "./FolderViewActions";
 
 interface FolderViewProps {
@@ -12,6 +12,8 @@ interface FolderViewProps {
     name: string;
     description: string | null;
     parentId: string | null;
+    visibility: Visibility;
+    shareToken: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -28,6 +30,8 @@ interface FolderViewProps {
     slug: string;
     title: string | null;
     contentType: "MARKDOWN" | "HTML";
+    visibility: Visibility;
+    shareToken: string | null;
     expiresAt: string | null;
     viewCount: number;
     createdAt: string;

@@ -38,6 +38,5 @@ export {
   useOwnedDocuments,
   rememberOwnedDocument,
   forgetOwnedDocument,
-  getOwnedDocumentToken,
 } from "./hooks/useOwnedDocuments";
 export { DocumentsTable } from "./components/DocumentsTable";
