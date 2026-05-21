@@ -79,6 +79,8 @@ export function FolderView({
             folderId={folder.id}
             folderSlug={folder.slug}
             folderName={folder.name}
+            visibility={folder.visibility}
+            shareToken={folder.shareToken}
           />
           <Button asChild>
             <Link href={`/editor?folderId=${folder.id}`}>

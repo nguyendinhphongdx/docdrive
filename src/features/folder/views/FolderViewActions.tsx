@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Loader2, Pencil, Trash2 } from "lucide-react";
+import { Loader2, Pencil, Share2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ShareDialog } from "@/features/document/components/ShareDialog";
+import type { Visibility } from "@/features/document";
 import { useDeleteFolder, useUpdateFolder } from "../hooks/useFolders";
 import {
   forgetOwnedFolder,
@@ -25,12 +27,16 @@ interface FolderViewActionsProps {
   folderId: string;
   folderSlug: string;
   folderName: string;
+  visibility: Visibility;
+  shareToken: string | null;
 }
 
 export function FolderViewActions({
   folderId,
   folderSlug,
   folderName,
+  visibility: initialVisibility,
+  shareToken: initialShareToken,
 }: FolderViewActionsProps) {
   const router = useRouter();
   const params = useSearchParams();
@@ -41,9 +47,15 @@ export function FolderViewActions({
 
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(folderName);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
+  const [shareToken, setShareToken] = useState<string | null>(initialShareToken);
 
   const update = useUpdateFolder(folderSlug, editToken);
   const remove = useDeleteFolder(folderSlug, editToken);
+  const isAnonymous = !!editToken && !ownedToken && !!queryToken
+    ? true
+    : !!ownedToken;
 
   if (!editToken) return null;
 
@@ -85,8 +97,41 @@ export function FolderViewActions({
     });
   };
 
+  const handleShareUpdate = (patch: { visibility?: Visibility }) => {
+    if (patch.visibility === undefined) return;
+    update.mutate(
+      { visibility: patch.visibility },
+      {
+        onSuccess: (data) => {
+          setVisibility(data.visibility);
+          setShareToken(data.shareToken);
+          toast.success(
+            patch.visibility === "PUBLIC"
+              ? "Share link generated"
+              : "Sharing stopped",
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to update"),
+      },
+    );
+  };
+
+  const shareUrl =
+    shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/sf/${shareToken}`
+      : null;
+  const editUrl =
+    queryToken && typeof window !== "undefined"
+      ? `${window.location.origin}/f/${folderSlug}?token=${queryToken}`
+      : null;
+
   return (
     <>
+      <Button variant="outline" size="sm" onClick={() => setShareOpen(true)}>
+        <Share2 className="mr-1 h-4 w-4" />
+        Share
+      </Button>
       <Button variant="outline" size="sm" onClick={() => setRenaming(true)}>
         <Pencil className="mr-1 h-4 w-4" />
         Rename
@@ -105,6 +150,19 @@ export function FolderViewActions({
         )}
         Delete
       </Button>
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        itemKind="folder"
+        visibility={visibility}
+        shareUrl={shareUrl}
+        editUrl={editUrl}
+        expiresAt={null}
+        isAnonymous={isAnonymous}
+        onUpdate={handleShareUpdate}
+        updating={update.isPending}
+      />
 
       <Dialog open={renaming} onOpenChange={setRenaming}>
         <DialogContent className="sm:max-w-md">

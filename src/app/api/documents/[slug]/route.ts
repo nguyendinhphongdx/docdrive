@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { updateDocumentSchema } from "@/features/document/lib/schema";
+import { computeExpiresAt } from "@/features/document/lib/ttl";
 
 export const runtime = "nodejs";
 
@@ -113,7 +114,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { title, contentType, content, folderId, visibility } = parsed.data;
+  const { title, contentType, content, folderId, visibility, ttl } = parsed.data;
 
   // Visibility toggle: generate or clear shareToken.
   let nextShareToken = existing.shareToken;
@@ -122,6 +123,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
   } else if (visibility === "PRIVATE") {
     nextShareToken = null;
   }
+
+  // TTL update: recompute expiresAt from preset. `ttl: "never"` → null.
+  const nextExpiresAt = ttl !== undefined ? computeExpiresAt(ttl) : undefined;
 
   const updated = await db.document.update({
     where: { slug },
@@ -133,6 +137,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       ...(visibility !== undefined
         ? { visibility, shareToken: nextShareToken }
         : {}),
+      ...(nextExpiresAt !== undefined ? { expiresAt: nextExpiresAt } : {}),
     },
     select: {
       slug: true,

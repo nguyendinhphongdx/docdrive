@@ -251,7 +251,7 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
               <MoreHorizontal className="h-3.5 w-3.5" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-44">
             <DropdownMenuItem
               onSelect={(e) => {
                 e.preventDefault();

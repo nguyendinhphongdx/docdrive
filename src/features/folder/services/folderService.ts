@@ -56,7 +56,12 @@ export const folderService = {
     slug: string,
     editToken: string | undefined,
     input: UpdateFolderInput,
-  ): Promise<{ slug: string; name: string }> => {
+  ): Promise<{
+    slug: string;
+    name: string;
+    visibility: "PRIVATE" | "PUBLIC";
+    shareToken: string | null;
+  }> => {
     const res = await fetch(`/api/folders/${slug}`, {
       method: "PATCH",
       headers: buildHeaders(editToken),

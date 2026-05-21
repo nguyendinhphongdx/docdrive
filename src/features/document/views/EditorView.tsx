@@ -42,7 +42,7 @@ import {
   forgetOwnedDocument,
   rememberOwnedDocument,
 } from "../hooks/useOwnedDocuments";
-import type { DocumentDraft, Visibility } from "../types";
+import type { DocumentDraft, TtlPreset, Visibility } from "../types";
 
 interface ExistingDocument {
   slug: string;
@@ -102,6 +102,9 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
   const [shareToken, setShareToken] = useState<string | null>(
     existingDocument?.shareToken ?? null,
   );
+  const [currentExpiresAt, setCurrentExpiresAt] = useState<string | null>(
+    existingDocument?.expiresAt ?? null,
+  );
   // Track the latest slug + editToken so the dialog stays accurate after
   // anonymous create (which transitions us from no-slug into an existing doc).
   const [activeSlug, setActiveSlug] = useState<string | null>(
@@ -152,6 +155,7 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
           setActiveEditToken(data.editToken);
           setVisibility(data.visibility);
           setShareToken(data.shareToken);
+          setCurrentExpiresAt(data.expiresAt);
           if (!authed) {
             setShareDialogOpen(true);
           } else {
@@ -172,22 +176,23 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
     setShareDialogOpen(true);
   };
 
-  const handleToggleVisibility = (next: Visibility) => {
+  const handleShareUpdate = (patch: {
+    visibility?: Visibility;
+    ttl?: TtlPreset;
+  }) => {
     if (!activeSlug) return;
-    updateDocument.mutate(
-      { visibility: next },
-      {
-        onSuccess: (data) => {
-          setVisibility(data.visibility);
-          setShareToken(data.shareToken);
-          toast.success(
-            next === "PUBLIC" ? "Share link generated" : "Sharing stopped",
-          );
-        },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to update"),
+    updateDocument.mutate(patch, {
+      onSuccess: (data) => {
+        setVisibility(data.visibility);
+        setShareToken(data.shareToken);
+        setCurrentExpiresAt(data.expiresAt);
+        if (patch.visibility === "PUBLIC") toast.success("Share link generated");
+        else if (patch.visibility === "PRIVATE") toast.success("Sharing stopped");
+        else if (patch.ttl) toast.success("Expiration updated");
       },
-    );
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to update"),
+    });
   };
 
   const handleDelete = () => {
@@ -245,7 +250,7 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
                 )}
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
+            <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuItem
                 variant="destructive"
                 onSelect={(e) => {
@@ -308,14 +313,22 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
         <ShareDialog
           open={shareDialogOpen}
           onOpenChange={setShareDialogOpen}
-          slug={activeSlug}
+          itemKind="document"
           visibility={visibility}
-          shareToken={shareToken}
-          expiresAt={existingDocument?.expiresAt ?? null}
+          shareUrl={
+            shareToken && typeof window !== "undefined"
+              ? `${window.location.origin}/sd/${shareToken}`
+              : null
+          }
+          editUrl={
+            activeEditToken && typeof window !== "undefined"
+              ? `${window.location.origin}/d/${activeSlug}?token=${activeEditToken}`
+              : null
+          }
+          expiresAt={currentExpiresAt}
           isAnonymous={!authed}
-          editToken={activeEditToken}
-          onToggleVisibility={authed ? handleToggleVisibility : undefined}
-          toggling={togglingVisibility}
+          onUpdate={authed ? handleShareUpdate : undefined}
+          updating={togglingVisibility}
         />
       )}
     </div>

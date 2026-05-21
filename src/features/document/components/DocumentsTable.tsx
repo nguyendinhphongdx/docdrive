@@ -152,7 +152,7 @@ function DocumentRow({ doc, isPending, onPendingChange }: RowProps) {
               )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="min-w-44">
             <DropdownMenuItem asChild>
               <Link href={`/d/${doc.slug}`}>
                 <Pencil className="mr-2 h-4 w-4" />

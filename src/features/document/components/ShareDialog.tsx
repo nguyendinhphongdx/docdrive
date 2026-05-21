@@ -25,42 +25,63 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Visibility } from "../types";
+import { TTL_OPTIONS } from "../lib/ttl";
+import type { TtlPreset, Visibility } from "../types";
+
+export type ShareItemKind = "document" | "folder";
+
+export interface ShareUpdate {
+  visibility?: Visibility;
+  ttl?: TtlPreset;
+}
 
 interface ShareDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  slug: string;
+  itemKind: ShareItemKind;
   visibility: Visibility;
-  shareToken: string | null;
+  /** Pre-built share URL (e.g. https://app/sd/<token>) — null if shareToken unset. */
+  shareUrl: string | null;
+  /** Pre-built owner edit URL with ?token=… — only shown for anonymous owners. */
+  editUrl: string | null;
   expiresAt: string | null;
-  /** When true, the user lacks a session — show the editUrl warning + no toggle. */
   isAnonymous: boolean;
-  /** Required when isAnonymous so we can show the bookmark-this URL. */
-  editToken: string | null;
-  /** When provided, owner can flip visibility from this dialog. */
-  onToggleVisibility?: (next: Visibility) => void;
-  toggling?: boolean;
+  /**
+   * Unified mutation callback. The dialog sends the (visibility, ttl) it
+   * wants applied. Caller is responsible for PATCH + optimistic updates.
+   * Documents support both fields; folders only visibility (no expiry).
+   */
+  onUpdate?: (patch: ShareUpdate) => void;
+  updating?: boolean;
 }
 
 export function ShareDialog({
   open,
   onOpenChange,
-  slug: _slug,
+  itemKind,
   visibility,
-  shareToken,
+  shareUrl,
+  editUrl,
   expiresAt,
   isAnonymous,
-  editToken,
-  onToggleVisibility,
-  toggling = false,
+  onUpdate,
+  updating = false,
 }: ShareDialogProps) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const shareUrl = shareToken ? `${origin}/sd/${shareToken}` : null;
-  const editUrl =
-    editToken && origin ? `${origin}/d/${_slug}?token=${editToken}` : null;
   const isPublic = visibility === "PUBLIC" && !!shareUrl;
+  const noun = itemKind === "document" ? "document" : "folder";
+  const Noun = itemKind === "document" ? "Document" : "Folder";
+  const supportsTtl = itemKind === "document";
+
+  // TTL select is local — only flushed when the user explicitly applies it.
+  const [pendingTtl, setPendingTtl] = useState<TtlPreset>("7d");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -68,14 +89,14 @@ export function ShareDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Share2 className="h-4 w-4" />
-            Share document
+            Share {noun}
           </DialogTitle>
           <DialogDescription>
             {isPublic
               ? expiresAt
                 ? `Anyone with the link can read this until ${new Date(expiresAt).toLocaleString()}.`
-                : "Anyone with the link can read this."
-              : "This document is private — only you can see it."}
+                : "Anyone with the link can read this. No expiration."
+              : `${Noun} is private — only you can see it.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -99,8 +120,41 @@ export function ShareDialog({
                   />
                   <p className="text-xs text-amber-700 dark:text-amber-400">
                     The only way to edit later. We don&apos;t save it for you.
-                    Sign up to claim this document into an account.
+                    Sign up to claim this {noun} into an account.
                   </p>
+                </div>
+              )}
+              {supportsTtl && onUpdate && (
+                <div className="space-y-2">
+                  <Label className="text-xs">Change expiration</Label>
+                  <div className="flex gap-2">
+                    <Select
+                      value={pendingTtl}
+                      onValueChange={(v) => setPendingTtl(v as TtlPreset)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TTL_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>
+                            {o.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      variant="outline"
+                      onClick={() => onUpdate({ ttl: pendingTtl })}
+                      disabled={updating}
+                    >
+                      {updating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Apply"
+                      )}
+                    </Button>
+                  </div>
                 </div>
               )}
             </TabsContent>
@@ -119,17 +173,43 @@ export function ShareDialog({
             <div className="flex items-start gap-2 text-muted-foreground">
               <Lock className="mt-0.5 h-4 w-4 shrink-0" />
               <p>
-                No one else can see this document. Generate a share link to
-                give anyone with the URL read access.
+                No one else can see this {noun}. Generate a share link to give
+                anyone with the URL read access.
               </p>
             </div>
-            {onToggleVisibility && (
+            {supportsTtl && onUpdate && (
+              <div className="space-y-2">
+                <Label className="text-xs">Link expires after</Label>
+                <Select
+                  value={pendingTtl}
+                  onValueChange={(v) => setPendingTtl(v as TtlPreset)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TTL_OPTIONS.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            {onUpdate && (
               <Button
-                onClick={() => onToggleVisibility("PUBLIC")}
-                disabled={toggling}
+                onClick={() =>
+                  onUpdate(
+                    supportsTtl
+                      ? { visibility: "PUBLIC", ttl: pendingTtl }
+                      : { visibility: "PUBLIC" },
+                  )
+                }
+                disabled={updating}
                 className="w-full"
               >
-                {toggling ? (
+                {updating ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                     Generating…
@@ -154,14 +234,14 @@ export function ShareDialog({
               </Link>
             </Button>
           )}
-          {isPublic && onToggleVisibility && (
+          {isPublic && onUpdate && (
             <Button
               variant="ghost"
-              onClick={() => onToggleVisibility("PRIVATE")}
-              disabled={toggling}
+              onClick={() => onUpdate({ visibility: "PRIVATE" })}
+              disabled={updating}
               className="text-destructive hover:text-destructive"
             >
-              {toggling ? (
+              {updating ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Unlock className="mr-2 h-4 w-4" />
