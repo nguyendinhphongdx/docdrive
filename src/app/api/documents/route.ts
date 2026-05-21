@@ -6,7 +6,8 @@ import { createDocumentSchema } from "@/features/document/lib/schema";
 import { generateSlug } from "@/features/document/lib/slug";
 import { computeExpiresAt } from "@/features/document/lib/ttl";
 import {
-  buildDocumentUrls,
+  buildDocumentEditUrl,
+  buildDocumentShareUrl,
   getOrigin,
 } from "@/features/document/lib/absolute-url";
 
@@ -31,14 +32,13 @@ export async function POST(req: NextRequest) {
 
   const session = await auth();
   const ownerId = session?.user?.id ?? null;
+  const isAnonymous = ownerId === null;
 
-  // If folderId is provided, ensure caller may use it: must own the folder
-  // (logged-in) or supply a folder edit-token via header. Keeps anonymous
-  // documents from being silently injected into other people's folders.
+  // If folderId supplied, verify the user can place a doc there.
   if (folderId) {
     const folder = await db.folder.findUnique({
       where: { id: folderId },
-      select: { id: true, ownerId: true, editToken: true },
+      select: { ownerId: true, editToken: true },
     });
     if (!folder) {
       return NextResponse.json({ error: "Folder not found" }, { status: 404 });
@@ -46,11 +46,12 @@ export async function POST(req: NextRequest) {
     const folderToken = req.headers.get("x-folder-token");
     const ownsFolder = ownerId && folder.ownerId === ownerId;
     const tokenMatch =
-      folderToken && folderToken.length === folder.editToken.length &&
+      folderToken &&
+      folderToken.length === folder.editToken.length &&
       folderToken === folder.editToken;
     if (!ownsFolder && !tokenMatch) {
       return NextResponse.json(
-        { error: "Cannot write to this folder" },
+        { error: "Cannot create document in this folder" },
         { status: 403 },
       );
     }
@@ -59,6 +60,11 @@ export async function POST(req: NextRequest) {
   const slug = generateSlug();
   const editToken = randomBytes(32).toString("hex");
   const expiresAt = computeExpiresAt(ttl);
+
+  // Anonymous → must be PUBLIC (link is the only way to share)
+  // Authed → defaults to PRIVATE (explicit Share action toggles later)
+  const visibility = isAnonymous ? "PUBLIC" : "PRIVATE";
+  const shareToken = isAnonymous ? randomBytes(16).toString("hex") : null;
 
   const created = await db.document.create({
     data: {
@@ -70,19 +76,24 @@ export async function POST(req: NextRequest) {
       expiresAt,
       ownerId,
       folderId: folderId ?? null,
+      visibility,
+      shareToken,
     },
-    select: { slug: true, expiresAt: true },
+    select: { slug: true, expiresAt: true, visibility: true, shareToken: true },
   });
 
   const origin = await getOrigin();
-  const urls = buildDocumentUrls(origin, created.slug, editToken);
-
   return NextResponse.json(
     {
       slug: created.slug,
       editToken,
+      visibility: created.visibility,
+      shareToken: created.shareToken,
+      shareUrl: created.shareToken
+        ? buildDocumentShareUrl(origin, created.shareToken)
+        : null,
+      editUrl: buildDocumentEditUrl(origin, created.slug, editToken),
       expiresAt: created.expiresAt?.toISOString() ?? null,
-      ...urls,
     },
     { status: 201 },
   );
@@ -95,9 +106,10 @@ export async function GET(req: NextRequest) {
   }
 
   const folderIdRaw = req.nextUrl.searchParams.get("folderId");
-  const where: { ownerId: string; folderId?: string | null } = {
-    ownerId: session.user.id,
-  };
+  const where: {
+    ownerId: string;
+    folderId?: string | null;
+  } = { ownerId: session.user.id };
   if (folderIdRaw === "null") {
     where.folderId = null;
   } else if (folderIdRaw) {
@@ -112,6 +124,8 @@ export async function GET(req: NextRequest) {
       title: true,
       contentType: true,
       folderId: true,
+      visibility: true,
+      shareToken: true,
       expiresAt: true,
       viewCount: true,
       createdAt: true,

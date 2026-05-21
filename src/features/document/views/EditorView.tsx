@@ -97,17 +97,11 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
   const saving = createDocument.isPending || updateDocument.isPending;
   const deleting = deleteDocument.isPending;
 
-  const shareData: CreateDocumentResponse | null = savedDoc ?? (
-    existingDocument && typeof window !== "undefined"
-      ? {
-          slug: existingDocument.slug,
-          editToken: existingDocument.editToken,
-          expiresAt: null,
-          viewUrl: `${window.location.origin}/d/${existingDocument.slug}`,
-          editUrl: `${window.location.origin}/editor/${existingDocument.slug}?token=${existingDocument.editToken}`,
-        }
-      : null
-  );
+  // TODO(R5): replace with a proper Share-toggle dialog that reads
+  // visibility + shareToken from the loaded document and lets the owner
+  // generate/revoke the share link. For now, only the just-saved doc is
+  // shareable in-session.
+  const shareData: CreateDocumentResponse | null = savedDoc;
   const canShare = !!shareData;
 
   const handleSave = () => {

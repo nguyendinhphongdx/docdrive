@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { createFolderSchema } from "@/features/folder/lib/schema";
 import { generateSlug } from "@/features/document/lib/slug";
-import { getOrigin } from "@/features/document/lib/absolute-url";
+import {
+  buildFolderEditUrl,
+  buildFolderShareUrl,
+  getOrigin,
+} from "@/features/document/lib/absolute-url";
 
 export const runtime = "nodejs";
 
@@ -44,6 +48,7 @@ export async function POST(req: NextRequest) {
 
   const session = await auth();
   const ownerId = session?.user?.id ?? null;
+  const isAnonymous = ownerId === null;
 
   if (parentId) {
     const parent = await db.folder.findUnique({
@@ -75,6 +80,8 @@ export async function POST(req: NextRequest) {
 
   const slug = generateSlug();
   const editToken = randomBytes(32).toString("hex");
+  const visibility = isAnonymous ? "PUBLIC" : "PRIVATE";
+  const shareToken = isAnonymous ? randomBytes(16).toString("hex") : null;
 
   const created = await db.folder.create({
     data: {
@@ -84,8 +91,16 @@ export async function POST(req: NextRequest) {
       parentId: parentId ?? null,
       editToken,
       ownerId,
+      visibility,
+      shareToken,
     },
-    select: { id: true, slug: true, name: true },
+    select: {
+      id: true,
+      slug: true,
+      name: true,
+      visibility: true,
+      shareToken: true,
+    },
   });
 
   const origin = await getOrigin();
@@ -95,8 +110,12 @@ export async function POST(req: NextRequest) {
       slug: created.slug,
       name: created.name,
       editToken,
-      viewUrl: `${origin}/f/${created.slug}`,
-      editUrl: `${origin}/f/${created.slug}?token=${editToken}`,
+      visibility: created.visibility,
+      shareToken: created.shareToken,
+      shareUrl: created.shareToken
+        ? buildFolderShareUrl(origin, created.shareToken)
+        : null,
+      editUrl: buildFolderEditUrl(origin, created.slug, editToken),
     },
     { status: 201 },
   );
@@ -127,6 +146,8 @@ export async function GET(req: NextRequest) {
       name: true,
       description: true,
       parentId: true,
+      visibility: true,
+      shareToken: true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -142,6 +163,8 @@ export async function GET(req: NextRequest) {
       name: f.name,
       description: f.description,
       parentId: f.parentId,
+      visibility: f.visibility,
+      shareToken: f.shareToken,
       documentCount: f._count.documents,
       childCount: f._count.children,
       createdAt: f.createdAt.toISOString(),

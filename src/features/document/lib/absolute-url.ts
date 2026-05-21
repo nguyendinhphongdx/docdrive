@@ -10,9 +10,32 @@ export async function getOrigin(): Promise<string> {
   return `${proto}://${host}`;
 }
 
-export function buildDocumentUrls(origin: string, slug: string, editToken: string) {
-  return {
-    viewUrl: `${origin}/d/${slug}`,
-    editUrl: `${origin}/editor/${slug}?token=${editToken}`,
-  };
+export function buildDocumentEditUrl(
+  origin: string,
+  slug: string,
+  editToken: string,
+): string {
+  return `${origin}/d/${slug}?token=${editToken}`;
+}
+
+export function buildDocumentShareUrl(
+  origin: string,
+  shareToken: string,
+): string {
+  return `${origin}/sd/${shareToken}`;
+}
+
+export function buildFolderEditUrl(
+  origin: string,
+  slug: string,
+  editToken: string,
+): string {
+  return `${origin}/f/${slug}?token=${editToken}`;
+}
+
+export function buildFolderShareUrl(
+  origin: string,
+  shareToken: string,
+): string {
+  return `${origin}/sf/${shareToken}`;
 }

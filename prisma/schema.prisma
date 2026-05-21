@@ -12,6 +12,11 @@ enum ContentType {
   HTML
 }
 
+enum Visibility {
+  PRIVATE
+  PUBLIC
+}
+
 model User {
   id        String   @id @default(cuid())
   email     String   @unique
@@ -25,19 +30,21 @@ model User {
 }
 
 model Folder {
-  id          String   @id @default(cuid())
-  slug        String   @unique
+  id          String     @id @default(cuid())
+  slug        String     @unique
   name        String
   description String?
   parentId    String?
-  parent      Folder?  @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
-  children    Folder[] @relation("FolderTree")
+  parent      Folder?    @relation("FolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Folder[]   @relation("FolderTree")
   ownerId     String?
-  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  owner       User?      @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   editToken   String
+  visibility  Visibility @default(PRIVATE)
+  shareToken  String?    @unique
   documents   Document[]
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
 
   @@index([ownerId])
   @@index([parentId])
@@ -54,6 +61,8 @@ model Document {
   folderId    String?
   folder      Folder?     @relation(fields: [folderId], references: [id], onDelete: SetNull)
   editToken   String
+  visibility  Visibility  @default(PRIVATE)
+  shareToken  String?     @unique
   expiresAt   DateTime?
   viewCount   Int         @default(0)
   createdAt   DateTime    @default(now())

@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
@@ -18,10 +19,11 @@ function timingSafeEqual(a: string, b: string): boolean {
   return mismatch === 0;
 }
 
-async function canMutate(
+async function authorize(
+  req: NextRequest,
   existing: { editToken: string; ownerId: string | null },
-  providedToken: string | null,
 ): Promise<boolean> {
+  const providedToken = req.headers.get("x-edit-token");
   if (providedToken && timingSafeEqual(existing.editToken, providedToken)) {
     return true;
   }
@@ -51,7 +53,7 @@ async function buildBreadcrumbs(
   return trail;
 }
 
-export async function GET(_req: NextRequest, ctx: RouteContext) {
+export async function GET(req: NextRequest, ctx: RouteContext) {
   const { slug } = await ctx.params;
 
   const folder = await db.folder.findUnique({
@@ -62,6 +64,10 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
       name: true,
       description: true,
       parentId: true,
+      visibility: true,
+      shareToken: true,
+      editToken: true,
+      ownerId: true,
       createdAt: true,
       updatedAt: true,
     },
@@ -69,8 +75,11 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
   if (!folder) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (!(await authorize(req, folder))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
-  const [breadcrumbs, children, documents] = await Promise.all([
+  const [breadcrumbs, subfolders, documents] = await Promise.all([
     folder.parentId ? buildBreadcrumbs(folder.parentId) : Promise.resolve([]),
     db.folder.findMany({
       where: { parentId: folder.id },
@@ -93,6 +102,8 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
         slug: true,
         title: true,
         contentType: true,
+        visibility: true,
+        shareToken: true,
         expiresAt: true,
         viewCount: true,
         createdAt: true,
@@ -102,12 +113,18 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
   return NextResponse.json({
     folder: {
-      ...folder,
+      id: folder.id,
+      slug: folder.slug,
+      name: folder.name,
+      description: folder.description,
+      parentId: folder.parentId,
+      visibility: folder.visibility,
+      shareToken: folder.shareToken,
       createdAt: folder.createdAt.toISOString(),
       updatedAt: folder.updatedAt.toISOString(),
     },
     breadcrumbs,
-    children: children.map((c) => ({
+    subfolders: subfolders.map((c) => ({
       id: c.id,
       slug: c.slug,
       name: c.name,
@@ -125,7 +142,6 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
 
 export async function PATCH(req: NextRequest, ctx: RouteContext) {
   const { slug } = await ctx.params;
-  const token = req.headers.get("x-edit-token");
 
   let body: unknown;
   try {
@@ -144,18 +160,23 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 
   const existing = await db.folder.findUnique({
     where: { slug },
-    select: { id: true, editToken: true, ownerId: true },
+    select: {
+      id: true,
+      editToken: true,
+      ownerId: true,
+      shareToken: true,
+      visibility: true,
+    },
   });
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (!(await canMutate(existing, token))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await authorize(req, existing))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { name, description, parentId } = parsed.data;
+  const { name, description, parentId, visibility } = parsed.data;
 
-  // Prevent setting a folder as its own ancestor.
   if (parentId !== undefined && parentId) {
     if (parentId === existing.id) {
       return NextResponse.json(
@@ -179,6 +200,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     }
   }
 
+  // Visibility toggle: generate/clear shareToken.
+  let nextShareToken = existing.shareToken;
+  if (visibility === "PUBLIC" && !existing.shareToken) {
+    nextShareToken = randomBytes(16).toString("hex");
+  } else if (visibility === "PRIVATE") {
+    nextShareToken = null;
+  }
+
   const updated = await db.folder.update({
     where: { slug },
     data: {
@@ -187,8 +216,16 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         ? { description: description?.length ? description : null }
         : {}),
       ...(parentId !== undefined ? { parentId } : {}),
+      ...(visibility !== undefined
+        ? { visibility, shareToken: nextShareToken }
+        : {}),
     },
-    select: { slug: true, name: true },
+    select: {
+      slug: true,
+      name: true,
+      visibility: true,
+      shareToken: true,
+    },
   });
 
   return NextResponse.json(updated);
@@ -196,7 +233,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
 
 export async function DELETE(req: NextRequest, ctx: RouteContext) {
   const { slug } = await ctx.params;
-  const token = req.headers.get("x-edit-token");
 
   const existing = await db.folder.findUnique({
     where: { slug },
@@ -205,11 +241,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext) {
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (!(await canMutate(existing, token))) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!(await authorize(req, existing))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  // Soft delete: children + documents become orphans (onDelete: SetNull).
   await db.folder.delete({ where: { slug } });
   return NextResponse.json({ ok: true });
 }

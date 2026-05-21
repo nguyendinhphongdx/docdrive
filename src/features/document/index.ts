@@ -10,6 +10,7 @@ export {
   updateDocumentSchema,
   contentTypeSchema,
   ttlPresetSchema,
+  visibilitySchema,
 } from "./lib/schema";
 export type {
   CreateDocumentInput,
@@ -18,6 +19,7 @@ export type {
 export type {
   ContentType,
   TtlPreset,
+  Visibility,
   DocumentDraft,
   DocumentDto,
   CreateDocumentResponse,

@@ -1,8 +1,12 @@
+import type { Visibility } from "@/features/document";
+
 export interface FolderDto {
   slug: string;
   name: string;
   description: string | null;
   parentId: string | null;
+  visibility: Visibility;
+  shareToken: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +17,8 @@ export interface FolderSummary {
   name: string;
   description: string | null;
   parentId: string | null;
+  visibility: Visibility;
+  shareToken: string | null;
   documentCount: number;
   childCount: number;
   createdAt: string;
@@ -26,11 +32,13 @@ export interface FolderViewDto {
     name: string;
     description: string | null;
     parentId: string | null;
+    visibility: Visibility;
+    shareToken: string | null;
     createdAt: string;
     updatedAt: string;
   };
   breadcrumbs: Array<{ slug: string; name: string }>;
-  children: Array<{
+  subfolders: Array<{
     id: string;
     slug: string;
     name: string;
@@ -42,6 +50,8 @@ export interface FolderViewDto {
     slug: string;
     title: string | null;
     contentType: "MARKDOWN" | "HTML";
+    visibility: Visibility;
+    shareToken: string | null;
     expiresAt: string | null;
     viewCount: number;
     createdAt: string;
@@ -53,7 +63,9 @@ export interface CreateFolderResponse {
   slug: string;
   name: string;
   editToken: string;
-  viewUrl: string;
+  visibility: Visibility;
+  shareToken: string | null;
+  shareUrl: string | null;
   editUrl: string;
 }
 

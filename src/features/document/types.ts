@@ -2,6 +2,8 @@ export type ContentType = "MARKDOWN" | "HTML";
 
 export type TtlPreset = "1h" | "1d" | "7d" | "30d" | "never";
 
+export type Visibility = "PRIVATE" | "PUBLIC";
+
 export interface DocumentDraft {
   title: string;
   contentType: ContentType;
@@ -16,6 +18,8 @@ export interface DocumentDto {
   contentType: ContentType;
   content: string;
   folderId: string | null;
+  visibility: Visibility;
+  shareToken: string | null;
   expiresAt: string | null;
   viewCount: number;
   createdAt: string;
@@ -25,7 +29,9 @@ export interface DocumentDto {
 export interface CreateDocumentResponse {
   slug: string;
   editToken: string;
-  viewUrl: string;
+  visibility: Visibility;
+  shareToken: string | null;
+  shareUrl: string | null;
   editUrl: string;
   expiresAt: string | null;
 }
