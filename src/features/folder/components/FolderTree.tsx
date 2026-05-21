@@ -11,6 +11,7 @@ import {
   Loader2,
   MoreHorizontal,
   Pencil,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -33,6 +34,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { ShareDialog } from "@/features/document/components/ShareDialog";
+import type { Visibility } from "@/features/document";
 import {
   useDeleteFolder,
   useMyFolders,
@@ -127,12 +130,40 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
   const [renaming, setRenaming] = useState(false);
   const [newName, setNewName] = useState(folder.name);
   const [creatingChild, setCreatingChild] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const [visibility, setVisibility] = useState<Visibility>(folder.visibility);
+  const [shareToken, setShareToken] = useState<string | null>(folder.shareToken);
   const children = all.filter((f) => f.parentId === folder.id);
   const update = useUpdateFolder(folder.slug, undefined);
   const remove = useDeleteFolder(folder.slug, undefined);
 
   const isActive = selectedId === folder.id;
   const hasChildren = children.length > 0;
+
+  const handleShareUpdate = (patch: { visibility?: Visibility }) => {
+    if (patch.visibility === undefined) return;
+    update.mutate(
+      { visibility: patch.visibility },
+      {
+        onSuccess: (data) => {
+          setVisibility(data.visibility);
+          setShareToken(data.shareToken);
+          toast.success(
+            patch.visibility === "PUBLIC"
+              ? "Share link generated"
+              : "Sharing stopped",
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to update"),
+      },
+    );
+  };
+
+  const shareUrl =
+    shareToken && typeof window !== "undefined"
+      ? `${window.location.origin}/sf/${shareToken}`
+      : null;
 
   const handleRowClick = () => {
     if (hasChildren) setExpanded((v) => !v);
@@ -271,6 +302,15 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
             <DropdownMenuItem
               onSelect={(e) => {
                 e.preventDefault();
+                setShareOpen(true);
+              }}
+            >
+              <Share2 className="mr-2 h-4 w-4" />
+              Share…
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onSelect={(e) => {
+                e.preventDefault();
                 setNewName(folder.name);
                 setRenaming(true);
               }}
@@ -350,6 +390,19 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
         onCreated={() => {
           setExpanded(true);
         }}
+      />
+
+      <ShareDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        itemKind="folder"
+        visibility={visibility}
+        shareUrl={shareUrl}
+        editUrl={null}
+        expiresAt={null}
+        isAnonymous={false}
+        onUpdate={handleShareUpdate}
+        updating={update.isPending}
       />
     </li>
   );
