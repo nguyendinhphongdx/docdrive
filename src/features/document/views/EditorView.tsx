@@ -253,9 +253,8 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
             <DropdownMenuContent align="end" className="min-w-44">
               <DropdownMenuItem
                 variant="destructive"
-                onSelect={(e) => {
-                  e.preventDefault();
-                  handleDelete();
+                onSelect={() => {
+                  setTimeout(handleDelete, 0);
                 }}
               >
                 <Trash2 className="mr-2 h-4 w-4" />

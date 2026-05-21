@@ -68,8 +68,7 @@ export function DashboardHeader({ user }: DashboardHeaderProps) {
           <DropdownMenuItem
             variant="destructive"
             disabled={signingOut}
-            onSelect={(e) => {
-              e.preventDefault();
+            onSelect={() => {
               startSignOut(() => {
                 void signOut({ callbackUrl: "/" });
               });

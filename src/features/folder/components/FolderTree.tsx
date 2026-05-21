@@ -284,9 +284,8 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-44">
             <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setCreatingChild(true);
+              onSelect={() => {
+                setTimeout(() => setCreatingChild(true), 0);
               }}
             >
               <FolderPlus className="mr-2 h-4 w-4" />
@@ -300,19 +299,17 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setShareOpen(true);
+              onSelect={() => {
+                setTimeout(() => setShareOpen(true), 0);
               }}
             >
               <Share2 className="mr-2 h-4 w-4" />
               Share…
             </DropdownMenuItem>
             <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
+              onSelect={() => {
                 setNewName(folder.name);
-                setRenaming(true);
+                setTimeout(() => setRenaming(true), 0);
               }}
             >
               <Pencil className="mr-2 h-4 w-4" />
@@ -320,9 +317,8 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
             </DropdownMenuItem>
             <DropdownMenuItem
               variant="destructive"
-              onSelect={(e) => {
-                e.preventDefault();
-                handleDelete();
+              onSelect={() => {
+                setTimeout(handleDelete, 0);
               }}
               disabled={remove.isPending}
             >
