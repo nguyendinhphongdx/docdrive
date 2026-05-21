@@ -133,6 +133,7 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
   const [shareOpen, setShareOpen] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>(folder.visibility);
   const [shareToken, setShareToken] = useState<string | null>(folder.shareToken);
+  const [expiresAt, setExpiresAt] = useState<string | null>(folder.expiresAt);
   const children = all.filter((f) => f.parentId === folder.id);
   const update = useUpdateFolder(folder.slug, undefined);
   const remove = useDeleteFolder(folder.slug, undefined);
@@ -140,24 +141,22 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
   const isActive = selectedId === folder.id;
   const hasChildren = children.length > 0;
 
-  const handleShareUpdate = (patch: { visibility?: Visibility }) => {
-    if (patch.visibility === undefined) return;
-    update.mutate(
-      { visibility: patch.visibility },
-      {
-        onSuccess: (data) => {
-          setVisibility(data.visibility);
-          setShareToken(data.shareToken);
-          toast.success(
-            patch.visibility === "PUBLIC"
-              ? "Share link generated"
-              : "Sharing stopped",
-          );
-        },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to update"),
+  const handleShareUpdate = (patch: {
+    visibility?: Visibility;
+    ttl?: import("@/features/document").TtlPreset;
+  }) => {
+    update.mutate(patch, {
+      onSuccess: (data) => {
+        setVisibility(data.visibility);
+        setShareToken(data.shareToken);
+        setExpiresAt(data.expiresAt);
+        if (patch.visibility === "PUBLIC") toast.success("Share link generated");
+        else if (patch.visibility === "PRIVATE") toast.success("Sharing stopped");
+        else if (patch.ttl) toast.success("Expiration updated");
       },
-    );
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to update"),
+    });
   };
 
   const shareUrl =
@@ -395,7 +394,7 @@ function FolderNode({ folder, all, depth, selectedId, onSelect }: NodeProps) {
         visibility={visibility}
         shareUrl={shareUrl}
         editUrl={null}
-        expiresAt={null}
+        expiresAt={expiresAt}
         isAnonymous={false}
         onUpdate={handleShareUpdate}
         updating={update.isPending}

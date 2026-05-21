@@ -61,6 +61,7 @@ export const folderService = {
     name: string;
     visibility: "PRIVATE" | "PUBLIC";
     shareToken: string | null;
+    expiresAt: string | null;
   }> => {
     const res = await fetch(`/api/folders/${slug}`, {
       method: "PATCH",

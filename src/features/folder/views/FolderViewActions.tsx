@@ -29,6 +29,7 @@ interface FolderViewActionsProps {
   folderName: string;
   visibility: Visibility;
   shareToken: string | null;
+  expiresAt: string | null;
 }
 
 export function FolderViewActions({
@@ -37,6 +38,7 @@ export function FolderViewActions({
   folderName,
   visibility: initialVisibility,
   shareToken: initialShareToken,
+  expiresAt: initialExpiresAt,
 }: FolderViewActionsProps) {
   const router = useRouter();
   const params = useSearchParams();
@@ -50,6 +52,7 @@ export function FolderViewActions({
   const [shareOpen, setShareOpen] = useState(false);
   const [visibility, setVisibility] = useState<Visibility>(initialVisibility);
   const [shareToken, setShareToken] = useState<string | null>(initialShareToken);
+  const [expiresAt, setExpiresAt] = useState<string | null>(initialExpiresAt);
 
   const update = useUpdateFolder(folderSlug, editToken);
   const remove = useDeleteFolder(folderSlug, editToken);
@@ -97,24 +100,22 @@ export function FolderViewActions({
     });
   };
 
-  const handleShareUpdate = (patch: { visibility?: Visibility }) => {
-    if (patch.visibility === undefined) return;
-    update.mutate(
-      { visibility: patch.visibility },
-      {
-        onSuccess: (data) => {
-          setVisibility(data.visibility);
-          setShareToken(data.shareToken);
-          toast.success(
-            patch.visibility === "PUBLIC"
-              ? "Share link generated"
-              : "Sharing stopped",
-          );
-        },
-        onError: (err) =>
-          toast.error(err instanceof Error ? err.message : "Failed to update"),
+  const handleShareUpdate = (patch: {
+    visibility?: Visibility;
+    ttl?: import("@/features/document").TtlPreset;
+  }) => {
+    update.mutate(patch, {
+      onSuccess: (data) => {
+        setVisibility(data.visibility);
+        setShareToken(data.shareToken);
+        setExpiresAt(data.expiresAt);
+        if (patch.visibility === "PUBLIC") toast.success("Share link generated");
+        else if (patch.visibility === "PRIVATE") toast.success("Sharing stopped");
+        else if (patch.ttl) toast.success("Expiration updated");
       },
-    );
+      onError: (err) =>
+        toast.error(err instanceof Error ? err.message : "Failed to update"),
+    });
   };
 
   const shareUrl =
@@ -158,7 +159,7 @@ export function FolderViewActions({
         visibility={visibility}
         shareUrl={shareUrl}
         editUrl={editUrl}
-        expiresAt={null}
+        expiresAt={expiresAt}
         isAnonymous={isAnonymous}
         onUpdate={handleShareUpdate}
         updating={update.isPending}

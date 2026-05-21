@@ -7,6 +7,7 @@ export interface FolderDto {
   parentId: string | null;
   visibility: Visibility;
   shareToken: string | null;
+  expiresAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface FolderSummary {
   parentId: string | null;
   visibility: Visibility;
   shareToken: string | null;
+  expiresAt: string | null;
   documentCount: number;
   childCount: number;
   createdAt: string;
@@ -34,6 +36,7 @@ export interface FolderViewDto {
     parentId: string | null;
     visibility: Visibility;
     shareToken: string | null;
+    expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
   };

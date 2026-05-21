@@ -69,6 +69,7 @@ export default async function OwnerFolderPage({
       parentId: true,
       visibility: true,
       shareToken: true,
+      expiresAt: true,
       editToken: true,
       ownerId: true,
       createdAt: true,
@@ -140,6 +141,7 @@ export default async function OwnerFolderPage({
           parentId: folder.parentId,
           visibility: folder.visibility,
           shareToken: folder.shareToken,
+          expiresAt: folder.expiresAt?.toISOString() ?? null,
           createdAt: folder.createdAt.toISOString(),
           updatedAt: folder.updatedAt.toISOString(),
         }}

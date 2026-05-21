@@ -78,7 +78,8 @@ export function ShareDialog({
   const isPublic = visibility === "PUBLIC" && !!shareUrl;
   const noun = itemKind === "document" ? "document" : "folder";
   const Noun = itemKind === "document" ? "Document" : "Folder";
-  const supportsTtl = itemKind === "document";
+  // Both documents and folders carry an optional expiresAt now.
+  const supportsTtl = true;
 
   // TTL select is local — only flushed when the user explicitly applies it.
   const [pendingTtl, setPendingTtl] = useState<TtlPreset>("7d");

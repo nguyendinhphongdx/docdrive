@@ -71,9 +71,21 @@ export default async function PublicFolderPage({ params }: PageProps) {
       description: true,
       parentId: true,
       visibility: true,
+      expiresAt: true,
     },
   });
   if (!folder || folder.visibility !== "PUBLIC") notFound();
+
+  if (folder.expiresAt && folder.expiresAt <= new Date()) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
+        <h1 className="text-2xl font-semibold">This folder has expired</h1>
+        <p className="max-w-md text-sm text-muted-foreground">
+          The share link is no longer active.
+        </p>
+      </div>
+    );
+  }
 
   const [breadcrumbs, subfolders, documents] = await Promise.all([
     buildBreadcrumbs(folder.parentId),

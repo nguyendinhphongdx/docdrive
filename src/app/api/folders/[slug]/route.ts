@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { updateFolderSchema } from "@/features/folder/lib/schema";
+import { computeExpiresAt } from "@/features/document/lib/ttl";
 
 export const runtime = "nodejs";
 
@@ -66,6 +67,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       parentId: true,
       visibility: true,
       shareToken: true,
+      expiresAt: true,
       editToken: true,
       ownerId: true,
       createdAt: true,
@@ -120,6 +122,7 @@ export async function GET(req: NextRequest, ctx: RouteContext) {
       parentId: folder.parentId,
       visibility: folder.visibility,
       shareToken: folder.shareToken,
+      expiresAt: folder.expiresAt?.toISOString() ?? null,
       createdAt: folder.createdAt.toISOString(),
       updatedAt: folder.updatedAt.toISOString(),
     },
@@ -175,7 +178,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  const { name, description, parentId, visibility } = parsed.data;
+  const { name, description, parentId, visibility, ttl } = parsed.data;
 
   if (parentId !== undefined && parentId) {
     if (parentId === existing.id) {
@@ -208,6 +211,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
     nextShareToken = null;
   }
 
+  // TTL update: recompute expiresAt from preset. `ttl: "never"` => null.
+  const nextExpiresAt = ttl !== undefined ? computeExpiresAt(ttl) : undefined;
+
   const updated = await db.folder.update({
     where: { slug },
     data: {
@@ -219,16 +225,92 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
       ...(visibility !== undefined
         ? { visibility, shareToken: nextShareToken }
         : {}),
+      ...(nextExpiresAt !== undefined ? { expiresAt: nextExpiresAt } : {}),
     },
     select: {
       slug: true,
       name: true,
       visibility: true,
       shareToken: true,
+      expiresAt: true,
     },
   });
 
-  return NextResponse.json(updated);
+  // Cascade: when a folder becomes PUBLIC, also publish every descendant
+  // folder and document so the share URL actually surfaces their content.
+  // (Going PRIVATE intentionally does NOT cascade — owners may have toggled
+  // individual children to PUBLIC independently and shouldn't lose that.)
+  if (visibility === "PUBLIC") {
+    await cascadePublic(existing.id);
+  }
+
+  return NextResponse.json({
+    ...updated,
+    expiresAt: updated.expiresAt?.toISOString() ?? null,
+  });
+}
+
+async function collectDescendantFolderIds(rootId: string): Promise<string[]> {
+  const ids: string[] = [];
+  let frontier = [rootId];
+  let safety = 0;
+  while (frontier.length > 0 && safety < 12) {
+    const children = await db.folder.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true },
+    });
+    if (children.length === 0) break;
+    const nextIds = children.map((c) => c.id);
+    ids.push(...nextIds);
+    frontier = nextIds;
+    safety += 1;
+  }
+  return ids;
+}
+
+async function cascadePublic(rootFolderId: string): Promise<void> {
+  const descendantFolderIds = await collectDescendantFolderIds(rootFolderId);
+  const allFolderIds = [rootFolderId, ...descendantFolderIds];
+
+  // Subfolders that aren't already publicly shareable need to flip.
+  const foldersToPublish = await db.folder.findMany({
+    where: {
+      id: { in: descendantFolderIds },
+      OR: [{ visibility: "PRIVATE" }, { shareToken: null }],
+    },
+    select: { id: true, shareToken: true },
+  });
+  await Promise.all(
+    foldersToPublish.map((f) =>
+      db.folder.update({
+        where: { id: f.id },
+        data: {
+          visibility: "PUBLIC",
+          shareToken: f.shareToken ?? randomBytes(16).toString("hex"),
+        },
+      }),
+    ),
+  );
+
+  // Documents under the entire subtree.
+  const docsToPublish = await db.document.findMany({
+    where: {
+      folderId: { in: allFolderIds },
+      OR: [{ visibility: "PRIVATE" }, { shareToken: null }],
+    },
+    select: { id: true, shareToken: true },
+  });
+  await Promise.all(
+    docsToPublish.map((d) =>
+      db.document.update({
+        where: { id: d.id },
+        data: {
+          visibility: "PUBLIC",
+          shareToken: d.shareToken ?? randomBytes(16).toString("hex"),
+        },
+      }),
+    ),
+  );
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext) {

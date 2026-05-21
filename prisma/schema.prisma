@@ -42,12 +42,14 @@ model Folder {
   editToken   String
   visibility  Visibility @default(PRIVATE)
   shareToken  String?    @unique
+  expiresAt   DateTime?
   documents   Document[]
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
   @@index([ownerId])
   @@index([parentId])
+  @@index([expiresAt])
 }
 
 model Document {

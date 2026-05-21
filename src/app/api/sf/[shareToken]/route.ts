@@ -45,12 +45,16 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
       description: true,
       parentId: true,
       visibility: true,
+      expiresAt: true,
       createdAt: true,
       updatedAt: true,
     },
   });
   if (!folder || folder.visibility !== "PUBLIC") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (folder.expiresAt && folder.expiresAt <= new Date()) {
+    return NextResponse.json({ error: "Expired" }, { status: 410 });
   }
 
   const [breadcrumbs, subfolders, documents] = await Promise.all([

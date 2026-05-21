@@ -148,6 +148,7 @@ export async function GET(req: NextRequest) {
       parentId: true,
       visibility: true,
       shareToken: true,
+      expiresAt: true,
       createdAt: true,
       updatedAt: true,
       _count: {
@@ -165,6 +166,7 @@ export async function GET(req: NextRequest) {
       parentId: f.parentId,
       visibility: f.visibility,
       shareToken: f.shareToken,
+      expiresAt: f.expiresAt?.toISOString() ?? null,
       documentCount: f._count.documents,
       childCount: f._count.children,
       createdAt: f.createdAt.toISOString(),

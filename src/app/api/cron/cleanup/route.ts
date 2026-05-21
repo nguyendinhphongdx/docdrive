@@ -18,11 +18,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const result = await db.document.deleteMany({
-    where: { expiresAt: { lte: new Date() } },
-  });
+  const now = new Date();
+  const [docs, folders] = await Promise.all([
+    db.document.deleteMany({ where: { expiresAt: { lte: now } } }),
+    db.folder.deleteMany({ where: { expiresAt: { lte: now } } }),
+  ]);
 
-  return NextResponse.json({ deleted: result.count });
+  return NextResponse.json({ documents: docs.count, folders: folders.count });
 }
 
 export const GET = POST;

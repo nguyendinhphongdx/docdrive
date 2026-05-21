@@ -14,6 +14,7 @@ interface FolderViewProps {
     parentId: string | null;
     visibility: Visibility;
     shareToken: string | null;
+    expiresAt: string | null;
     createdAt: string;
     updatedAt: string;
   };
@@ -81,6 +82,7 @@ export function FolderView({
             folderName={folder.name}
             visibility={folder.visibility}
             shareToken={folder.shareToken}
+            expiresAt={folder.expiresAt}
           />
           <Button asChild>
             <Link href={`/editor?folderId=${folder.id}`}>

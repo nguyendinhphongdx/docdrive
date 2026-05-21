@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { visibilitySchema } from "@/features/document/lib/schema";
+import {
+  ttlPresetSchema,
+  visibilitySchema,
+} from "@/features/document/lib/schema";
 
 export const createFolderSchema = z.object({
   name: z.string().trim().min(1, "Folder name is required").max(80),
@@ -9,6 +12,7 @@ export const createFolderSchema = z.object({
 
 export const updateFolderSchema = createFolderSchema.partial().extend({
   visibility: visibilitySchema.optional(),
+  ttl: ttlPresetSchema.optional(),
 });
 
 export type CreateFolderInput = z.infer<typeof createFolderSchema>;
