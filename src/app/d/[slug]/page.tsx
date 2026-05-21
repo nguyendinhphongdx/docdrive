@@ -88,6 +88,9 @@ export default async function OwnerDocumentPage({
       existingDocument={{
         slug: doc.slug,
         editToken: doc.editToken,
+        visibility: doc.visibility,
+        shareToken: doc.shareToken,
+        expiresAt: doc.expiresAt?.toISOString() ?? null,
         initialDraft: {
           title: doc.title ?? "",
           contentType: doc.contentType,

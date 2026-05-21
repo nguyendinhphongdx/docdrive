@@ -31,7 +31,7 @@ import {
 import { EditorPane } from "../components/EditorPane";
 import { PreviewPane } from "../components/PreviewPane";
 import { DocumentSidebar } from "../components/DocumentSidebar";
-import { DocumentCreatedDialog } from "../components/DocumentCreatedDialog";
+import { ShareDialog } from "../components/ShareDialog";
 import { useDocumentDraft } from "../store";
 import {
   useCreateDocument,
@@ -42,11 +42,14 @@ import {
   forgetOwnedDocument,
   rememberOwnedDocument,
 } from "../hooks/useOwnedDocuments";
-import type { CreateDocumentResponse, DocumentDraft } from "../types";
+import type { DocumentDraft, Visibility } from "../types";
 
 interface ExistingDocument {
   slug: string;
   editToken: string;
+  visibility: Visibility;
+  shareToken: string | null;
+  expiresAt: string | null;
   initialDraft: DocumentDraft;
 }
 
@@ -90,19 +93,31 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
     existingDocument?.editToken ?? "",
   );
 
-  const [savedDoc, setSavedDoc] = useState<CreateDocumentResponse | null>(null);
   const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  // Live share-state: starts from the doc loaded server-side, mutates as the
+  // owner toggles visibility (which also creates / clears shareToken).
+  const [visibility, setVisibility] = useState<Visibility>(
+    existingDocument?.visibility ?? "PRIVATE",
+  );
+  const [shareToken, setShareToken] = useState<string | null>(
+    existingDocument?.shareToken ?? null,
+  );
+  // Track the latest slug + editToken so the dialog stays accurate after
+  // anonymous create (which transitions us from no-slug into an existing doc).
+  const [activeSlug, setActiveSlug] = useState<string | null>(
+    existingDocument?.slug ?? null,
+  );
+  const [activeEditToken, setActiveEditToken] = useState<string | null>(
+    existingDocument?.editToken ?? null,
+  );
 
   const isEdit = !!existingDocument;
   const saving = createDocument.isPending || updateDocument.isPending;
   const deleting = deleteDocument.isPending;
-
-  // TODO(R5): replace with a proper Share-toggle dialog that reads
-  // visibility + shareToken from the loaded document and lets the owner
-  // generate/revoke the share link. For now, only the just-saved doc is
-  // shareable in-session.
-  const shareData: CreateDocumentResponse | null = savedDoc;
-  const canShare = !!shareData;
+  const togglingVisibility = updateDocument.isPending;
+  // Share button is available as soon as a doc exists (either preloaded or
+  // freshly created in this session).
+  const canShare = !!activeSlug;
 
   const handleSave = () => {
     if (!content.trim()) {
@@ -133,16 +148,15 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
               createdAt: new Date().toISOString(),
             });
           }
-          setSavedDoc(data);
-          // For anonymous, show the dialog automatically (it carries the ONLY
-          // edit URL the user gets). Authed user can click Share later.
+          setActiveSlug(data.slug);
+          setActiveEditToken(data.editToken);
+          setVisibility(data.visibility);
+          setShareToken(data.shareToken);
           if (!authed) {
             setShareDialogOpen(true);
           } else {
             toast.success("Saved");
           }
-          // Anonymous: token in URL so refresh keeps editing rights.
-          // Authed: clean URL, server uses session.
           router.replace(
             authed ? `/d/${data.slug}` : `/d/${data.slug}?token=${data.editToken}`,
           );
@@ -156,6 +170,24 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
   const handleShare = () => {
     if (!canShare) return;
     setShareDialogOpen(true);
+  };
+
+  const handleToggleVisibility = (next: Visibility) => {
+    if (!activeSlug) return;
+    updateDocument.mutate(
+      { visibility: next },
+      {
+        onSuccess: (data) => {
+          setVisibility(data.visibility);
+          setShareToken(data.shareToken);
+          toast.success(
+            next === "PUBLIC" ? "Share link generated" : "Sharing stopped",
+          );
+        },
+        onError: (err) =>
+          toast.error(err instanceof Error ? err.message : "Failed to update"),
+      },
+    );
   };
 
   const handleDelete = () => {
@@ -272,12 +304,20 @@ export function EditorView({ existingDocument, folderPicker }: EditorViewProps) 
         </div>
       </div>
 
-      <DocumentCreatedDialog
-        open={shareDialogOpen}
-        data={shareData}
-        onOpenChange={setShareDialogOpen}
-        showEditUrl={!authed}
-      />
+      {activeSlug && (
+        <ShareDialog
+          open={shareDialogOpen}
+          onOpenChange={setShareDialogOpen}
+          slug={activeSlug}
+          visibility={visibility}
+          shareToken={shareToken}
+          expiresAt={existingDocument?.expiresAt ?? null}
+          isAnonymous={!authed}
+          editToken={activeEditToken}
+          onToggleVisibility={authed ? handleToggleVisibility : undefined}
+          toggling={togglingVisibility}
+        />
+      )}
     </div>
   );
 }
